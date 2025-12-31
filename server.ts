@@ -18,48 +18,141 @@ const io = new Server(httpServer, {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  socket.on("get_messages", async () => {
+  // Join a specific room
+  socket.on("join_room", async (data: { roomId: string; userId: string }) => {
+    try {
+      const { roomId, userId } = data;
+      socket.join(roomId);
+
+      // Get user info
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+
+      if (user) {
+        // Update user status to ONLINE
+        await prisma.user.update({
+          where: { id: userId },
+          data: { status: "ONLINE", lastSeen: new Date() },
+        });
+
+        // Notify room members
+        socket.to(roomId).emit("user_joined", {
+          username: user.username,
+        });
+
+        console.log(`${user.username} joined room ${roomId}`);
+      }
+    } catch (error) {
+      console.error("Error joining room:", error);
+    }
+  });
+
+  // Get messages for a specific room
+  socket.on("get_room_messages", async (roomId: string) => {
     try {
       const messages = await prisma.message.findMany({
+        where: { roomId },
         orderBy: { createdAt: "asc" },
-        include: { user: true },
-        take: 50,
+        include: {
+          user: {
+            select: {
+              username: true,
+              avatar: true,
+            },
+          },
+        },
+        take: 100,
       });
-      socket.emit("initial_messages", messages);
+      socket.emit("room_messages", messages);
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      console.error("Error fetching room messages:", error);
     }
   });
 
-  socket.on("send_message", async (data) => {
-    try {
-      console.log("Received message:", data);
+  // Send message to a specific room
+  socket.on(
+    "send_room_message",
+    async (data: {
+      roomId: string;
+      userId: string;
+      username: string;
+      content: string;
+    }) => {
+      try {
+        const { roomId, userId, content } = data;
 
-      let user = await prisma.user.findUnique({
-        where: { username: data.username },
+        // Verify user is a member of the room
+        const membership = await prisma.roomMember.findUnique({
+          where: {
+            userId_roomId: {
+              userId,
+              roomId,
+            },
+          },
+        });
+
+        if (!membership) {
+          socket.emit("error", { message: "Not a member of this room" });
+          return;
+        }
+
+        // Create message
+        const newMessage = await prisma.message.create({
+          data: {
+            content,
+            userId,
+            roomId,
+            type: "TEXT",
+          },
+          include: {
+            user: {
+              select: {
+                username: true,
+                avatar: true,
+              },
+            },
+          },
+        });
+
+        // Update room's updatedAt
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { updatedAt: new Date() },
+        });
+
+        // Broadcast to all users in the room
+        io.to(roomId).emit("new_message", newMessage);
+      } catch (error) {
+        console.error("Error sending room message:", error);
+      }
+    },
+  );
+
+  // Leave room
+  socket.on("leave_room", async (data: { roomId: string; userId: string }) => {
+    try {
+      const { roomId, userId } = data;
+      socket.leave(roomId);
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
       });
 
-      if (!user) {
-        user = await prisma.user.create({
-          data: { username: data.username },
+      if (user) {
+        socket.to(roomId).emit("user_left", {
+          username: user.username,
         });
       }
-
-      const newMessage = await prisma.message.create({
-        data: {
-          content: data.content,
-          userId: user.id,
-        },
-        include: { user: true },
-      });
-
-      io.emit("receive_message", newMessage);
     } catch (error) {
-      console.error("Error saving message:", error);
+      console.error("Error leaving room:", error);
     }
   });
 
-  socket.on("disconnect", () => {
+  // Handle disconnect
+  socket.on("disconnect", async () => {
     console.log("User disconnected:", socket.id);
   });
 });

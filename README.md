@@ -182,15 +182,3 @@ Jangan lupa untuk menjalankan Socket.io server:
 ```bash
 npm run server
 ```
-
-## 🤝 Contributing
-
-Kontribusi selalu diterima! Silakan buat pull request atau buka issue untuk saran dan perbaikan.
-
-## 📄 License
-
-This project is private and proprietary.
-
----
-
-Built with ❤️ using Next.js and Socket.io

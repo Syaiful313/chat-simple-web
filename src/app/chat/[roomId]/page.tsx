@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, use } from "react";
+import { useEffect, useState, useRef, use, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, Send, Users, Loader2, Hash, Lock } from "lucide-react";
+import { TypingIndicator } from "@/components/typing-indicator";
+import { useTyping } from "@/hooks/use-typing";
 
 interface Message {
   id: string;
@@ -44,7 +46,9 @@ export default function ChatRoomPage({
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -59,25 +63,7 @@ export default function ChatRoomPage({
     }, 100);
   };
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-      return;
-    }
-
-    if (status === "authenticated") {
-      fetchRoomData();
-      initializeSocket();
-    }
-
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, [status, resolvedParams.roomId]);
-
-  const fetchRoomData = async () => {
+  const fetchRoomData = useCallback(async () => {
     try {
       const res = await fetch(`/api/rooms/${resolvedParams.roomId}`);
       if (!res.ok) throw new Error("Room not found");
@@ -89,9 +75,9 @@ export default function ChatRoomPage({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [resolvedParams.roomId, router]);
 
-  const initializeSocket = () => {
+  const initializeSocket = useCallback(() => {
     socket = io("http://localhost:3001");
 
     socket.on("connect", () => {
@@ -120,15 +106,85 @@ export default function ChatRoomPage({
     socket.on("user_left", (data: { username: string }) => {
       console.log(`${data.username} left the room`);
     });
-  };
+
+    // Typing indicator events
+    socket.on("user_typing", (data: { userId: string; username: string }) => {
+      setTypingUsers((prev) => {
+        if (!prev.includes(data.username)) {
+          return [...prev, data.username];
+        }
+        return prev;
+      });
+
+      // Auto-remove after 3 seconds
+      const existingTimeout = typingTimeoutsRef.current.get(data.userId);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+      }
+
+      const timeout = setTimeout(() => {
+        setTypingUsers((prev) => prev.filter((u) => u !== data.username));
+        typingTimeoutsRef.current.delete(data.userId);
+      }, 3000);
+
+      typingTimeoutsRef.current.set(data.userId, timeout);
+    });
+
+    socket.on("user_stopped_typing", (data: { userId: string }) => {
+      const timeout = typingTimeoutsRef.current.get(data.userId);
+      if (timeout) {
+        clearTimeout(timeout);
+        typingTimeoutsRef.current.delete(data.userId);
+      }
+      setTypingUsers((prev) =>
+        prev.filter((u) => u !== prev.find((username) => username)),
+      );
+    });
+  }, [resolvedParams.roomId, session?.user.id]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+
+    if (status === "authenticated") {
+      fetchRoomData();
+      initializeSocket();
+    }
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [status, resolvedParams.roomId, fetchRoomData, initializeSocket, router]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  // Typing hook
+  const { emitTyping, stopTyping } = useTyping({
+    socket,
+    roomId: resolvedParams.roomId,
+    userId: session?.user?.id || "",
+    username: session?.user?.username || "",
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    if (e.target.value.trim()) {
+      emitTyping();
+    } else {
+      stopTyping();
+    }
+  };
+
   const handleSendMessage = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (inputValue.trim() && session?.user) {
+      stopTyping();
       socket.emit("send_room_message", {
         roomId: resolvedParams.roomId,
         userId: session.user.id,
@@ -243,13 +299,16 @@ export default function ChatRoomPage({
         </div>
       </ScrollArea>
 
+      {/* Typing Indicator */}
+      <TypingIndicator typingUsers={typingUsers} />
+
       {/* Input */}
       <div className="p-4 bg-white border-t">
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <Input
             placeholder="Ketik pesan..."
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={handleInputChange}
             className="flex-1"
             autoFocus
           />

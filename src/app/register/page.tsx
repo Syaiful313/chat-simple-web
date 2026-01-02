@@ -52,7 +52,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-blue-50 to-indigo-100">
+    <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-950 dark:to-gray-900">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
@@ -60,15 +60,17 @@ export default function RegisterPage() {
               <MessageSquare className="w-8 h-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Buat Akun Baru</CardTitle>
-          <p className="text-sm text-gray-500">
+          <CardTitle className="text-2xl font-bold dark:text-gray-100">
+            Buat Akun Baru
+          </CardTitle>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Daftar untuk mulai chatting dengan teman-teman
           </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
+              <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
                 {error}
               </div>
             )}
@@ -145,9 +147,12 @@ export default function RegisterPage() {
               )}
             </Button>
 
-            <p className="text-sm text-center text-gray-600">
+            <p className="text-sm text-center text-gray-600 dark:text-gray-400">
               Sudah punya akun?{" "}
-              <Link href="/login" className="text-blue-600 hover:underline">
+              <Link
+                href="/login"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
                 Login di sini
               </Link>
             </p>

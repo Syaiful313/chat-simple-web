@@ -28,6 +28,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createRoomSchema, type CreateRoomInput } from "@/lib/validations";
 import { NotificationBadge } from "@/components/NotificationBadge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Room {
   id: string;
@@ -130,9 +131,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-900 border-b dark:border-gray-800 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -140,8 +141,10 @@ export default function HomePage() {
                 <MessageSquare className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Chat Rooms</h1>
-                <p className="text-sm text-gray-500">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  Chat Rooms
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Selamat datang, {session.user.username}
                 </p>
               </div>
@@ -149,10 +152,11 @@ export default function HomePage() {
 
             <div className="flex items-center gap-3">
               <Avatar className="w-10 h-10">
-                <AvatarFallback className="bg-blue-100 text-blue-600">
+                <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
                   {session.user.username[0].toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              <ThemeToggle />
               <Button
                 variant="outline"
                 size="sm"
@@ -170,8 +174,10 @@ export default function HomePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Semua Room</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Semua Room
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {rooms.length} room tersedia
             </p>
           </div>
@@ -261,11 +267,11 @@ export default function HomePage() {
         {/* Rooms Grid */}
         {rooms.length === 0 ? (
           <Card className="p-12 text-center">
-            <MessageSquare className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <MessageSquare className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-700 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Belum ada room
             </h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Buat room pertama Anda untuk mulai chatting
             </p>
           </Card>
@@ -274,7 +280,7 @@ export default function HomePage() {
             {rooms.map((room) => (
               <Card
                 key={room.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
+                className="hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-900 dark:border-gray-800"
                 onClick={() => handleJoinRoom(room.id)}
               >
                 <CardHeader>
@@ -295,13 +301,13 @@ export default function HomePage() {
                     </div>
                   </div>
                   {room.description && (
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                       {room.description}
                     </p>
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
                       <span>{room._count.members} members</span>
@@ -312,8 +318,8 @@ export default function HomePage() {
                     </div>
                   </div>
                   {room.messages[0] && (
-                    <div className="mt-3 pt-3 border-t">
-                      <p className="text-xs text-gray-400 truncate">
+                    <div className="mt-3 pt-3 border-t dark:border-gray-800">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
                         Pesan terakhir: {room.messages[0].content}
                       </p>
                     </div>

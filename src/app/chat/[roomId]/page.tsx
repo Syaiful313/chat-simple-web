@@ -22,6 +22,7 @@ import { useTyping } from "@/hooks/UseTyping";
 import { OnlineStatus } from "@/components/OnlineStatus";
 import { ReactionPicker } from "@/components/ReactionPicker";
 import { useNotifications } from "@/hooks/UseNotifications";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Message {
   id: string;
@@ -357,9 +358,9 @@ export default function ChatRoomPage({
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-white border-x border-gray-200">
+    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-white dark:bg-gray-950 border-x border-gray-200 dark:border-gray-800">
       {/* Header */}
-      <div className="p-4 border-b bg-white z-10 sticky top-0">
+      <div className="p-4 border-b dark:border-gray-800 bg-white dark:bg-gray-900 z-10 sticky top-0">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -377,16 +378,21 @@ export default function ChatRoomPage({
               <Lock className="w-5 h-5 text-gray-600" />
             )}
             <div>
-              <h1 className="text-lg font-bold">{room.name}</h1>
+              <h1 className="text-lg font-bold dark:text-gray-100">
+                {room.name}
+              </h1>
               {room.description && (
-                <p className="text-xs text-gray-500">{room.description}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {room.description}
+                </p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Users className="w-4 h-4" />
             <span>{room._count.members}</span>
+            <ThemeToggle />
           </div>
         </div>
       </div>
@@ -406,7 +412,9 @@ export default function ChatRoomPage({
                   <Avatar className="w-8 h-8">
                     <AvatarFallback
                       className={
-                        isMe ? "bg-blue-100 text-blue-600" : "bg-gray-100"
+                        isMe
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300"
+                          : "bg-gray-100 dark:bg-gray-800 dark:text-gray-300"
                       }
                     >
                       {msg.user.username[0].toUpperCase()}
@@ -431,7 +439,7 @@ export default function ChatRoomPage({
                       })}
                     </span>
                     {!isMe && (
-                      <span className="text-xs font-semibold text-gray-600">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
                         {msg.user.username}
                       </span>
                     )}
@@ -439,8 +447,8 @@ export default function ChatRoomPage({
                   <div
                     className={`px-4 py-2 rounded-2xl text-sm ${
                       isMe
-                        ? "bg-blue-600 text-white rounded-tr-none"
-                        : "bg-gray-100 text-gray-800 rounded-tl-none"
+                        ? "bg-blue-600 dark:bg-blue-700 text-white rounded-tr-none"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-none"
                     }`}
                   >
                     {msg.content}
@@ -483,7 +491,7 @@ export default function ChatRoomPage({
             );
           })}
           {messages.length === 0 && (
-            <div className="text-center text-gray-400 mt-10">
+            <div className="text-center text-gray-400 dark:text-gray-600 mt-10">
               Belum ada pesan. Mulai percakapan!
             </div>
           )}
@@ -494,7 +502,7 @@ export default function ChatRoomPage({
       <TypingIndicator typingUsers={typingUsers} />
 
       {/* Input */}
-      <div className="p-4 bg-white border-t">
+      <div className="p-4 bg-white dark:bg-gray-900 border-t dark:border-gray-800">
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <Input
             placeholder="Ketik pesan..."

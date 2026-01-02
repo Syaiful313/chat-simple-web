@@ -18,6 +18,10 @@ import {
   Smile,
   Settings,
   Image as ImageIcon,
+  Pencil,
+  Trash2,
+  X,
+  Check,
 } from "lucide-react";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { useTyping } from "@/hooks/UseTyping";
@@ -33,6 +37,7 @@ interface Message {
   id: string;
   content: string;
   type?: string;
+  edited?: boolean;
   createdAt: string;
   user: {
     id: string;
@@ -88,9 +93,43 @@ export default function ChatRoomPage({
   );
   const [isRoomSettingsOpen, setIsRoomSettingsOpen] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const { showNotification } = useNotifications();
+
+  const handleEditMessage = (msg: Message) => {
+    setEditingMessageId(msg.id);
+    setEditContent(msg.content);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditContent("");
+  };
+
+  const handleSaveEdit = () => {
+    if (!editContent.trim() || !editingMessageId) return;
+    socket.emit("edit_message", {
+      messageId: editingMessageId,
+      newContent: editContent,
+      userId: session?.user.id,
+      roomId: resolvedParams.roomId,
+    });
+    setEditingMessageId(null);
+    setEditContent("");
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    if (confirm("Are you sure you want to delete this message?")) {
+      socket.emit("delete_message", {
+        messageId,
+        userId: session?.user.id,
+        roomId: resolvedParams.roomId,
+      });
+    }
+  };
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -201,6 +240,16 @@ export default function ChatRoomPage({
         });
       },
     );
+
+    socket.on("message_updated", (updatedMsg: Message) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === updatedMsg.id ? updatedMsg : msg)),
+      );
+    });
+
+    socket.on("message_deleted", (deletedMsgId: string) => {
+      setMessages((prev) => prev.filter((msg) => msg.id !== deletedMsgId));
+    });
 
     socket.on(
       "reaction_removed",
@@ -487,18 +536,97 @@ export default function ChatRoomPage({
                       </span>
                     )}
                   </div>
-                  {/* Message Content */}
-                  {msg.type === "IMAGE" ? (
-                    <ImageMessage src={msg.content} alt="Shared image" />
+                  {/* Message Content or Edit Form */}
+                  {editingMessageId === msg.id ? (
+                    <div className="flex flex-col gap-2 items-end min-w-[200px]">
+                      <Input
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="bg-gray-100 dark:bg-gray-800"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            handleSaveEdit();
+                          } else if (e.key === "Escape") {
+                            handleCancelEdit();
+                          }
+                        }}
+                      />
+                      <div className="flex gap-1 bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-100 dark:border-gray-800">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleCancelEdit}
+                          className="h-8 w-8 p-0 hover:text-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleSaveEdit}
+                          className="h-8 w-8 p-0 hover:text-green-600"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
-                    <div
-                      className={`px-4 py-2 rounded-2xl text-sm ${
-                        isMe
-                          ? "bg-blue-600 dark:bg-blue-700 text-white rounded-tr-none"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-none"
-                      }`}
-                    >
-                      {msg.content}
+                    <div className="group/msg relative">
+                      {msg.type === "IMAGE" ? (
+                        <div className="relative">
+                          <ImageMessage src={msg.content} alt="Shared image" />
+                          {isMe && (
+                            <div className="absolute top-2 right-2 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDeleteMessage(msg.id)}
+                                className="h-8 w-8 p-0 rounded-full shadow-md"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className={`px-4 py-2 rounded-2xl text-sm relative ${
+                            isMe
+                              ? "bg-blue-600 dark:bg-blue-700 text-white rounded-tr-none"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-none"
+                          }`}
+                        >
+                          {msg.content}
+                          {msg.edited && (
+                            <span className="text-[10px] ml-1 opacity-70 italic">
+                              (edited)
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Edit/Delete Actions for text messages */}
+                      {isMe && msg.type === "TEXT" && (
+                        <div className="absolute top-0 -left-20 opacity-0 group-hover/msg:opacity-100 transition-opacity flex gap-1 items-center h-full">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditMessage(msg)}
+                            className="h-8 w-8 p-0 bg-gray-100 dark:bg-gray-800 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-full shadow-sm"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="h-8 w-8 p-0 bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900 rounded-full shadow-sm"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 

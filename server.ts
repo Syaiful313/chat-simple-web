@@ -68,6 +68,7 @@ io.on("connection", (socket) => {
         include: {
           user: {
             select: {
+              id: true,
               username: true,
               avatar: true,
             },
@@ -120,6 +121,7 @@ io.on("connection", (socket) => {
           include: {
             user: {
               select: {
+                id: true,
                 username: true,
                 avatar: true,
               },
@@ -216,6 +218,75 @@ io.on("connection", (socket) => {
         });
       } catch (error) {
         console.error("Error removing reaction:", error);
+      }
+    },
+  );
+
+  // Edit message
+  socket.on(
+    "edit_message",
+    async (data: {
+      messageId: string;
+      newContent: string;
+      userId: string;
+      roomId: string;
+    }) => {
+      try {
+        // Verify ownership
+        const message = await prisma.message.findUnique({
+          where: { id: data.messageId },
+        });
+
+        if (!message || message.userId !== data.userId) {
+          return;
+        }
+
+        const updatedMessage = await prisma.message.update({
+          where: { id: data.messageId },
+          data: {
+            content: data.newContent,
+            edited: true,
+            updatedAt: new Date(),
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+              },
+            },
+          },
+        });
+
+        io.to(data.roomId).emit("message_updated", updatedMessage);
+      } catch (error) {
+        console.error("Error editing message:", error);
+      }
+    },
+  );
+
+  // Delete message
+  socket.on(
+    "delete_message",
+    async (data: { messageId: string; userId: string; roomId: string }) => {
+      try {
+        // Verify ownership
+        const message = await prisma.message.findUnique({
+          where: { id: data.messageId },
+        });
+
+        if (!message || message.userId !== data.userId) {
+          return;
+        }
+
+        await prisma.message.delete({
+          where: { id: data.messageId },
+        });
+
+        io.to(data.roomId).emit("message_deleted", data.messageId);
+      } catch (error) {
+        console.error("Error deleting message:", error);
       }
     },
   );

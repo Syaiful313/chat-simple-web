@@ -27,6 +27,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createRoomSchema, type CreateRoomInput } from "@/lib/validations";
+import { NotificationBadge } from "@/components/notification-badge";
 
 interface Room {
   id: string;
@@ -43,6 +44,10 @@ interface Room {
   messages: Array<{
     content: string;
     createdAt: string;
+  }>;
+  members: Array<{
+    unreadCount: number;
+    userId: string;
   }>;
 }
 
@@ -274,13 +279,19 @@ export default function HomePage() {
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 relative">
                       {room.type === "PUBLIC" ? (
                         <Hash className="w-5 h-5 text-blue-600" />
                       ) : (
                         <Lock className="w-5 h-5 text-gray-600" />
                       )}
                       <CardTitle className="text-lg">{room.name}</CardTitle>
+                      <NotificationBadge
+                        count={
+                          room.members.find((m) => m.userId === session.user.id)
+                            ?.unreadCount || 0
+                        }
+                      />
                     </div>
                   </div>
                   {room.description && (

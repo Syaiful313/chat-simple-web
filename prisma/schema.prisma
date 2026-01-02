@@ -25,6 +25,7 @@ model User {
   messages      Message[]
   roomMembers   RoomMember[]
   createdRooms  Room[]       @relation("RoomCreator")
+  reactions     Reaction[]
 }
 
 model Room {
@@ -51,6 +52,7 @@ model RoomMember {
   role          MemberRole   @default(MEMBER)
   joinedAt      DateTime     @default(now())
   lastReadAt    DateTime?
+  unreadCount   Int          @default(0)
   
   userId        String
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -78,8 +80,25 @@ model Message {
   roomId        String
   room          Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
   
+  reactions     Reaction[]
+  
   @@index([roomId, createdAt])
   @@index([userId])
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, messageId, emoji])
+  @@index([messageId])
 }
 
 enum UserStatus {

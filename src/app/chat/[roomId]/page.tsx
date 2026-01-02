@@ -8,18 +8,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Users, Loader2, Hash, Lock } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Users,
+  Loader2,
+  Hash,
+  Lock,
+  Smile,
+} from "lucide-react";
 import { TypingIndicator } from "@/components/typing-indicator";
 import { useTyping } from "@/hooks/use-typing";
+import { OnlineStatus } from "@/components/online-status";
+import { ReactionPicker } from "@/components/reaction-picker";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface Message {
   id: string;
   content: string;
   createdAt: string;
   user: {
+    id: string;
     username: string;
     avatar: string | null;
   };
+}
+
+interface MessageReaction {
+  emoji: string;
+  count: number;
+  users: string[];
 }
 
 interface Room {
@@ -47,8 +65,18 @@ export default function ChatRoomPage({
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [userStatuses, setUserStatuses] = useState<
+    Map<string, "ONLINE" | "OFFLINE" | "AWAY">
+  >(new Map());
+  const [messageReactions, setMessageReactions] = useState<
+    Map<string, MessageReaction[]>
+  >(new Map());
+  const [showReactionPicker, setShowReactionPicker] = useState<string | null>(
+    null,
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const { showNotification } = useNotifications();
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -96,6 +124,17 @@ export default function ChatRoomPage({
 
     socket.on("new_message", (msg: Message) => {
       setMessages((prev) => [...prev, msg]);
+
+      // Show notification if not from current user
+      if (msg.user.username !== session?.user.username) {
+        showNotification(
+          `New message from ${msg.user.username}`,
+          msg.content.length > 50
+            ? msg.content.substring(0, 50) + "..."
+            : msg.content,
+        );
+      }
+
       scrollToBottom();
     });
 
@@ -106,6 +145,75 @@ export default function ChatRoomPage({
     socket.on("user_left", (data: { username: string }) => {
       console.log(`${data.username} left the room`);
     });
+
+    // User status events
+    socket.on(
+      "user_status_changed",
+      (data: { userId: string; status: "ONLINE" | "OFFLINE" | "AWAY" }) => {
+        setUserStatuses((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(data.userId, data.status);
+          return newMap;
+        });
+      },
+    );
+
+    // Reaction events
+    socket.on(
+      "reaction_added",
+      (data: { messageId: string; emoji: string; userId: string }) => {
+        setMessageReactions((prev) => {
+          const newMap = new Map(prev);
+          const reactions = newMap.get(data.messageId) || [];
+
+          const existingReaction = reactions.find(
+            (r) => r.emoji === data.emoji,
+          );
+          if (existingReaction) {
+            existingReaction.count++;
+            if (!existingReaction.users.includes(data.userId)) {
+              existingReaction.users.push(data.userId);
+            }
+          } else {
+            reactions.push({
+              emoji: data.emoji,
+              count: 1,
+              users: [data.userId],
+            });
+          }
+
+          newMap.set(data.messageId, reactions);
+          return newMap;
+        });
+      },
+    );
+
+    socket.on(
+      "reaction_removed",
+      (data: { messageId: string; emoji: string; userId: string }) => {
+        setMessageReactions((prev) => {
+          const newMap = new Map(prev);
+          const reactions = newMap.get(data.messageId) || [];
+
+          const reactionIndex = reactions.findIndex(
+            (r) => r.emoji === data.emoji,
+          );
+          if (reactionIndex !== -1) {
+            reactions[reactionIndex].count--;
+            reactions[reactionIndex].users = reactions[
+              reactionIndex
+            ].users.filter((u) => u !== data.userId);
+
+            if (reactions[reactionIndex].count === 0) {
+              reactions.splice(reactionIndex, 1);
+            }
+          }
+
+          newMap.set(data.messageId, reactions.length > 0 ? reactions : []);
+          return newMap;
+        });
+      },
+    );
 
     // Typing indicator events
     socket.on("user_typing", (data: { userId: string; username: string }) => {
@@ -140,7 +248,12 @@ export default function ChatRoomPage({
         prev.filter((u) => u !== prev.find((username) => username)),
       );
     });
-  }, [resolvedParams.roomId, session?.user.id]);
+  }, [
+    resolvedParams.roomId,
+    session?.user.id,
+    session?.user.username,
+    showNotification,
+  ]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -192,6 +305,42 @@ export default function ChatRoomPage({
         content: inputValue,
       });
       setInputValue("");
+    }
+  };
+
+  const handleReaction = async (messageId: string, emoji: string) => {
+    if (!session?.user) return;
+
+    try {
+      // Call API to toggle reaction
+      const res = await fetch(`/api/messages/${messageId}/reactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+
+        // Emit socket event
+        if (data.action === "added") {
+          socket.emit("add_reaction", {
+            messageId,
+            emoji,
+            userId: session.user.id,
+            roomId: resolvedParams.roomId,
+          });
+        } else {
+          socket.emit("remove_reaction", {
+            messageId,
+            emoji,
+            userId: session.user.id,
+            roomId: resolvedParams.roomId,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to react:", error);
     }
   };
 
@@ -247,20 +396,29 @@ export default function ChatRoomPage({
         <div className="space-y-4 pb-4">
           {messages.map((msg) => {
             const isMe = msg.user.username === session.user.username;
+            const reactions = messageReactions.get(msg.id) || [];
             return (
               <div
                 key={msg.id}
                 className={`flex gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
               >
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback
-                    className={
-                      isMe ? "bg-blue-100 text-blue-600" : "bg-gray-100"
-                    }
-                  >
-                    {msg.user.username[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback
+                      className={
+                        isMe ? "bg-blue-100 text-blue-600" : "bg-gray-100"
+                      }
+                    >
+                      {msg.user.username[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute bottom-0 right-0">
+                    <OnlineStatus
+                      status={userStatuses.get(msg.user.id) || "OFFLINE"}
+                      size="sm"
+                    />
+                  </div>
+                </div>
 
                 <div
                   className={`flex flex-col max-w-[75%] ${isMe ? "items-end" : "items-start"}`}
@@ -286,6 +444,39 @@ export default function ChatRoomPage({
                     }`}
                   >
                     {msg.content}
+                  </div>
+
+                  {/* Reactions */}
+                  <div className="flex gap-1 mt-1 flex-wrap items-center">
+                    {reactions.map((reaction) => (
+                      <button
+                        key={reaction.emoji}
+                        onClick={() => handleReaction(msg.id, reaction.emoji)}
+                        className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-xs flex items-center gap-1 transition-colors"
+                        title={`${reaction.users.length} reaction${reaction.users.length > 1 ? "s" : ""}`}
+                      >
+                        <span>{reaction.emoji}</span>
+                        <span className="text-gray-600">{reaction.count}</span>
+                      </button>
+                    ))}
+                    <div className="relative">
+                      <button
+                        onClick={() =>
+                          setShowReactionPicker(
+                            showReactionPicker === msg.id ? null : msg.id,
+                          )
+                        }
+                        className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      >
+                        <Smile className="w-4 h-4 text-gray-400" />
+                      </button>
+                      {showReactionPicker === msg.id && (
+                        <ReactionPicker
+                          onReact={(emoji) => handleReaction(msg.id, emoji)}
+                          onClose={() => setShowReactionPicker(null)}
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import "dotenv/config";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 
+const connectedUsers = new Map<string, string>();
 const connectionString = process.env.DATABASE_URL!;
 const adapter = new PrismaMariaDb(connectionString);
 const prisma = new PrismaClient({ adapter });
@@ -44,6 +45,15 @@ io.on("connection", (socket) => {
 
         console.log(`${user.username} joined room ${roomId}`);
       }
+
+      // Track connected users
+      connectedUsers.set(userId, socket.id);
+
+      // Broadcast to all users in the room
+      io.to(roomId).emit("user_status_changed", {
+        userId,
+        status: "ONLINE",
+      });
     } catch (error) {
       console.error("Error joining room:", error);
     }
@@ -168,9 +178,74 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Reaction events
+  socket.on(
+    "add_reaction",
+    async (data: {
+      messageId: string;
+      emoji: string;
+      userId: string;
+      roomId: string;
+    }) => {
+      try {
+        io.to(data.roomId).emit("reaction_added", {
+          messageId: data.messageId,
+          emoji: data.emoji,
+          userId: data.userId,
+        });
+      } catch (error) {
+        console.error("Error adding reaction:", error);
+      }
+    },
+  );
+
+  socket.on(
+    "remove_reaction",
+    async (data: {
+      messageId: string;
+      emoji: string;
+      userId: string;
+      roomId: string;
+    }) => {
+      try {
+        io.to(data.roomId).emit("reaction_removed", {
+          messageId: data.messageId,
+          emoji: data.emoji,
+          userId: data.userId,
+        });
+      } catch (error) {
+        console.error("Error removing reaction:", error);
+      }
+    },
+  );
+
   // Handle disconnect
   socket.on("disconnect", async () => {
     console.log("User disconnected:", socket.id);
+
+    // Find and remove user from connected users
+    for (const [userId, socketId] of connectedUsers.entries()) {
+      if (socketId === socket.id) {
+        connectedUsers.delete(userId);
+
+        try {
+          // Update user status in database
+          await prisma.user.update({
+            where: { id: userId },
+            data: { status: "OFFLINE", lastSeen: new Date() },
+          });
+
+          // Broadcast offline status to all clients
+          io.emit("user_status_changed", {
+            userId: userId,
+            status: "OFFLINE",
+          });
+        } catch (error) {
+          console.error("Error updating user status:", error);
+        }
+        break;
+      }
+    }
   });
 });
 

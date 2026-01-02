@@ -17,6 +17,7 @@ import {
   Lock,
   Smile,
   Settings,
+  Image as ImageIcon,
 } from "lucide-react";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { useTyping } from "@/hooks/UseTyping";
@@ -25,10 +26,13 @@ import { ReactionPicker } from "@/components/ReactionPicker";
 import { useNotifications } from "@/hooks/UseNotifications";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoomSettingsDialog } from "@/components/RoomSettingsDialog";
+import { ImageUpload } from "@/components/ImageUpload";
+import { ImageMessage } from "@/components/ImageMessage";
 
 interface Message {
   id: string;
   content: string;
+  type?: string;
   createdAt: string;
   user: {
     id: string;
@@ -83,6 +87,7 @@ export default function ChatRoomPage({
     null,
   );
   const [isRoomSettingsOpen, setIsRoomSettingsOpen] = useState(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const { showNotification } = useNotifications();
@@ -312,8 +317,22 @@ export default function ChatRoomPage({
         userId: session.user.id,
         username: session.user.username,
         content: inputValue,
+        type: "TEXT",
       });
       setInputValue("");
+    }
+  };
+
+  const handleImageSelect = (imageUrl: string) => {
+    if (session?.user) {
+      socket.emit("send_room_message", {
+        roomId: resolvedParams.roomId,
+        userId: session.user.id,
+        username: session.user.username,
+        content: imageUrl,
+        type: "IMAGE",
+      });
+      setShowImageUpload(false);
     }
   };
 
@@ -468,15 +487,20 @@ export default function ChatRoomPage({
                       </span>
                     )}
                   </div>
-                  <div
-                    className={`px-4 py-2 rounded-2xl text-sm ${
-                      isMe
-                        ? "bg-blue-600 dark:bg-blue-700 text-white rounded-tr-none"
-                        : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-none"
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
+                  {/* Message Content */}
+                  {msg.type === "IMAGE" ? (
+                    <ImageMessage src={msg.content} alt="Shared image" />
+                  ) : (
+                    <div
+                      className={`px-4 py-2 rounded-2xl text-sm ${
+                        isMe
+                          ? "bg-blue-600 dark:bg-blue-700 text-white rounded-tr-none"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-none"
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  )}
 
                   {/* Reactions */}
                   <div className="flex gap-1 mt-1 flex-wrap items-center">
@@ -527,18 +551,35 @@ export default function ChatRoomPage({
 
       {/* Input */}
       <div className="p-4 bg-white dark:bg-gray-900 border-t dark:border-gray-800">
-        <form onSubmit={handleSendMessage} className="flex gap-2">
-          <Input
-            placeholder="Ketik pesan..."
-            value={inputValue}
-            onChange={handleInputChange}
-            className="flex-1"
-            autoFocus
+        {showImageUpload ? (
+          <ImageUpload
+            onImageSelect={handleImageSelect}
+            onCancel={() => setShowImageUpload(false)}
           />
-          <Button type="submit" disabled={!inputValue.trim()}>
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
+        ) : (
+          <form onSubmit={handleSendMessage} className="flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowImageUpload(true)}
+              className="h-10 w-10 p-0"
+              title="Upload Image"
+            >
+              <ImageIcon className="w-5 h-5" />
+            </Button>
+            <Input
+              placeholder="Ketik pesan..."
+              value={inputValue}
+              onChange={handleInputChange}
+              className="flex-1"
+              autoFocus
+            />
+            <Button type="submit" disabled={!inputValue.trim()}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </form>
+        )}
       </div>
 
       {/* Room Settings Dialog */}

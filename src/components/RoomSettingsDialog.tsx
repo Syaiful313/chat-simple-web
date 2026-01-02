@@ -24,6 +24,7 @@ import {
   Trash2,
   AlertTriangle,
 } from "lucide-react";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const roomSettingsSchema = z.object({
   name: z
@@ -272,27 +273,24 @@ export function RoomSettingsDialog({
                 </div>
               </div>
 
-              {/* Avatar URL Field */}
-              <div className="space-y-2">
-                <Label htmlFor="avatar" className="flex items-center gap-2">
+              {/* Avatar Selection */}
+              <div className="space-y-4">
+                <Label className="flex items-center gap-2">
                   <ImageIcon className="w-4 h-4" />
-                  Avatar URL (Opsional)
+                  Room Avatar
                 </Label>
-                <Input
-                  id="avatar"
-                  type="url"
-                  placeholder="https://example.com/room-avatar.jpg"
-                  {...register("avatar")}
-                  disabled={isLoading}
-                />
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
+                  <ImageUpload
+                    onImageSelect={(url) => setValue("avatar", url)}
+                    onCancel={() => setValue("avatar", "")}
+                    buttonLabel="Update Avatar"
+                  />
+                </div>
                 {errors.avatar && (
                   <p className="text-xs text-red-600 dark:text-red-400">
                     {errors.avatar.message}
                   </p>
                 )}
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Masukkan URL gambar untuk avatar room
-                </p>
               </div>
 
               {/* Action Buttons */}

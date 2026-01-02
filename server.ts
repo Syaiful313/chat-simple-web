@@ -89,9 +89,10 @@ io.on("connection", (socket) => {
       userId: string;
       username: string;
       content: string;
+      type?: string;
     }) => {
       try {
-        const { roomId, userId, content } = data;
+        const { roomId, userId, content, type = "TEXT" } = data;
 
         // Verify user is a member of the room
         const membership = await prisma.roomMember.findUnique({
@@ -114,7 +115,7 @@ io.on("connection", (socket) => {
             content,
             userId,
             roomId,
-            type: "TEXT",
+            type: type as "TEXT" | "IMAGE" | "FILE",
           },
           include: {
             user: {

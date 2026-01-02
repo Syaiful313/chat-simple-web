@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, User, FileText, Image as ImageIcon } from "lucide-react";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const profileSchema = z.object({
   username: z
@@ -215,27 +216,24 @@ export function ProfileDialog({
               )}
             </div>
 
-            {/* Avatar URL Field */}
-            <div className="space-y-2">
-              <Label htmlFor="avatar" className="flex items-center gap-2">
+            {/* Avatar Selection */}
+            <div className="space-y-4">
+              <Label className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
-                Avatar URL (Opsional)
+                Avatar Update
               </Label>
-              <Input
-                id="avatar"
-                type="url"
-                placeholder="https://example.com/avatar.jpg"
-                {...register("avatar")}
-                disabled={isLoading}
-              />
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
+                <ImageUpload
+                  onImageSelect={(url) => setValue("avatar", url)}
+                  onCancel={() => setValue("avatar", "")}
+                  buttonLabel="Update Avatar"
+                />
+              </div>
               {errors.avatar && (
                 <p className="text-xs text-red-600 dark:text-red-400">
                   {errors.avatar.message}
                 </p>
               )}
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Masukkan URL gambar untuk avatar Anda
-              </p>
             </div>
 
             {/* Action Buttons */}

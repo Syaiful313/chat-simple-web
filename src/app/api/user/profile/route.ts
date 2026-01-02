@@ -14,7 +14,7 @@ const updateProfileSchema = z.object({
     )
     .optional(),
   bio: z.string().max(160, "Bio maksimal 160 karakter").optional(),
-  avatar: z.string().url("Avatar harus berupa URL valid").optional(),
+  avatar: z.string().optional(),
 });
 
 export async function GET() {

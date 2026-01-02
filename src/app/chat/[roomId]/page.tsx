@@ -16,6 +16,7 @@ import {
   Hash,
   Lock,
   Smile,
+  Settings,
 } from "lucide-react";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { useTyping } from "@/hooks/UseTyping";
@@ -23,6 +24,7 @@ import { OnlineStatus } from "@/components/OnlineStatus";
 import { ReactionPicker } from "@/components/ReactionPicker";
 import { useNotifications } from "@/hooks/UseNotifications";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { RoomSettingsDialog } from "@/components/RoomSettingsDialog";
 
 interface Message {
   id: string;
@@ -46,6 +48,11 @@ interface Room {
   name: string;
   description: string | null;
   type: "PUBLIC" | "PRIVATE";
+  creatorId: string;
+  members?: Array<{
+    userId: string;
+    role: string;
+  }>;
   _count: {
     members: number;
   };
@@ -75,6 +82,7 @@ export default function ChatRoomPage({
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(
     null,
   );
+  const [isRoomSettingsOpen, setIsRoomSettingsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const { showNotification } = useNotifications();
@@ -393,6 +401,22 @@ export default function ChatRoomPage({
             <Users className="w-4 h-4" />
             <span>{room._count.members}</span>
             <ThemeToggle />
+            {/* Settings button - only show for creator or admin */}
+            {(room.creatorId === session.user.id ||
+              room.members?.some(
+                (m: { userId: string; role: string }) =>
+                  m.userId === session.user.id && m.role === "ADMIN",
+              )) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsRoomSettingsOpen(true)}
+                className="h-8 w-8 p-0"
+                title="Room Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -516,6 +540,18 @@ export default function ChatRoomPage({
           </Button>
         </form>
       </div>
+
+      {/* Room Settings Dialog */}
+      {room && (
+        <RoomSettingsDialog
+          open={isRoomSettingsOpen}
+          onOpenChange={setIsRoomSettingsOpen}
+          roomId={room.id}
+          isCreator={room.creatorId === session.user.id}
+          onRoomUpdated={fetchRoomData}
+          onRoomDeleted={() => router.push("/")}
+        />
+      )}
     </div>
   );
 }

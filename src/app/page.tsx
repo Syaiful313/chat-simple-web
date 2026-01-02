@@ -29,6 +29,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createRoomSchema, type CreateRoomInput } from "@/lib/validations";
 import { NotificationBadge } from "@/components/NotificationBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ProfileDialog } from "@/components/ProfileDialog";
 
 interface Room {
   id: string;
@@ -59,6 +60,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const {
     register,
@@ -151,11 +153,17 @@ export default function HomePage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <Avatar className="w-10 h-10">
-                <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
-                  {session.user.username[0].toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <button
+                onClick={() => setIsProfileOpen(true)}
+                className="hover:opacity-80 transition-opacity"
+                title="Edit Profile"
+              >
+                <Avatar className="w-10 h-10">
+                  <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+                    {session.user.username[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
               <ThemeToggle />
               <Button
                 variant="outline"
@@ -330,6 +338,13 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      {/* Profile Dialog */}
+      <ProfileDialog
+        open={isProfileOpen}
+        onOpenChange={setIsProfileOpen}
+        onProfileUpdated={fetchRooms}
+      />
     </div>
   );
 }

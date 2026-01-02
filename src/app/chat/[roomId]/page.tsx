@@ -17,11 +17,11 @@ import {
   Lock,
   Smile,
 } from "lucide-react";
-import { TypingIndicator } from "@/components/typing-indicator";
-import { useTyping } from "@/hooks/use-typing";
-import { OnlineStatus } from "@/components/online-status";
-import { ReactionPicker } from "@/components/reaction-picker";
-import { useNotifications } from "@/hooks/use-notifications";
+import { TypingIndicator } from "@/components/TypingIndicator";
+import { useTyping } from "@/hooks/UseTyping";
+import { OnlineStatus } from "@/components/OnlineStatus";
+import { ReactionPicker } from "@/components/ReactionPicker";
+import { useNotifications } from "@/hooks/UseNotifications";
 
 interface Message {
   id: string;

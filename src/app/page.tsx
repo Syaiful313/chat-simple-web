@@ -27,7 +27,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createRoomSchema, type CreateRoomInput } from "@/lib/validations";
-import { NotificationBadge } from "@/components/notification-badge";
+import { NotificationBadge } from "@/components/NotificationBadge";
 
 interface Room {
   id: string;

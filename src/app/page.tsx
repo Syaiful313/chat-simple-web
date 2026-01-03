@@ -32,6 +32,7 @@ import { createRoom } from "@/hooks/api/rooms/CreateRoom";
 import { NotificationBadge } from "@/components/NotificationBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProfileDialog } from "@/components/ProfileDialog";
+import { NewDMDialog } from "@/components/NewDMDialog";
 
 interface Room {
   id: string;
@@ -63,6 +64,7 @@ export default function HomePage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDMDialogOpen, setIsDMDialogOpen] = useState(false);
 
   const {
     register,
@@ -178,93 +180,107 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Semua Room
+              Rooms & Messages
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {rooms.length} room tersedia
             </p>
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Buat Room Baru
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Buat Room Baru</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit(onCreateRoom)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nama Room</Label>
-                  <Input
-                    id="name"
-                    placeholder="Nama room..."
-                    {...register("name")}
-                    disabled={isCreating}
-                  />
-                  {errors.name && (
-                    <p className="text-xs text-red-600">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsDMDialogOpen(true)}>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              New DM
+            </Button>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Deskripsi (Opsional)</Label>
-                  <Input
-                    id="description"
-                    placeholder="Deskripsi room..."
-                    {...register("description")}
-                    disabled={isCreating}
-                  />
-                  {errors.description && (
-                    <p className="text-xs text-red-600">
-                      {errors.description.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tipe Room</Label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        value="PUBLIC"
-                        {...register("type")}
-                        defaultChecked
-                        disabled={isCreating}
-                      />
-                      <span className="text-sm">Public</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        value="PRIVATE"
-                        {...register("type")}
-                        disabled={isCreating}
-                      />
-                      <span className="text-sm">Private</span>
-                    </label>
-                  </div>
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isCreating}>
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Membuat...
-                    </>
-                  ) : (
-                    "Buat Room"
-                  )}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Buat Room Baru
                 </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Buat Room Baru</DialogTitle>
+                </DialogHeader>
+                <form
+                  onSubmit={handleSubmit(onCreateRoom)}
+                  className="space-y-4"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nama Room</Label>
+                    <Input
+                      id="name"
+                      placeholder="Nama room..."
+                      {...register("name")}
+                      disabled={isCreating}
+                    />
+                    {errors.name && (
+                      <p className="text-xs text-red-600">
+                        {errors.name.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Deskripsi (Opsional)</Label>
+                    <Input
+                      id="description"
+                      placeholder="Deskripsi room..."
+                      {...register("description")}
+                      disabled={isCreating}
+                    />
+                    {errors.description && (
+                      <p className="text-xs text-red-600">
+                        {errors.description.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Tipe Room</Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="PUBLIC"
+                          {...register("type")}
+                          defaultChecked
+                          disabled={isCreating}
+                        />
+                        <span className="text-sm">Public</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="PRIVATE"
+                          {...register("type")}
+                          disabled={isCreating}
+                        />
+                        <span className="text-sm">Private</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isCreating}
+                  >
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Membuat...
+                      </>
+                    ) : (
+                      "Buat Room"
+                    )}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Rooms Grid */}
@@ -289,12 +305,21 @@ export default function HomePage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2 relative">
-                      {room.type === "PUBLIC" ? (
+                      {room.type === "DIRECT" ? (
+                        <MessageSquare className="w-5 h-5 text-green-600" />
+                      ) : room.type === "PUBLIC" ? (
                         <Hash className="w-5 h-5 text-blue-600" />
                       ) : (
                         <Lock className="w-5 h-5 text-gray-600" />
                       )}
-                      <CardTitle className="text-lg">{room.name}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {room.type === "DIRECT"
+                          ? room.name
+                              .replace("DM: ", "")
+                              .replace(` & ${session.user.username}`, "")
+                              .replace(`${session.user.username} & `, "")
+                          : room.name}
+                      </CardTitle>
                       <NotificationBadge
                         count={
                           room.members.find((m) => m.userId === session.user.id)
@@ -302,8 +327,19 @@ export default function HomePage() {
                         }
                       />
                     </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        room.type === "DIRECT"
+                          ? "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300"
+                          : room.type === "PUBLIC"
+                            ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                      }`}
+                    >
+                      {room.type === "DIRECT" ? "DM" : room.type}
+                    </span>
                   </div>
-                  {room.description && (
+                  {room.description && room.type !== "DIRECT" && (
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                       {room.description}
                     </p>
@@ -340,6 +376,9 @@ export default function HomePage() {
         onOpenChange={setIsProfileOpen}
         onProfileUpdated={fetchRooms}
       />
+
+      {/* New DM Dialog */}
+      <NewDMDialog open={isDMDialogOpen} onOpenChange={setIsDMDialogOpen} />
     </div>
   );
 }

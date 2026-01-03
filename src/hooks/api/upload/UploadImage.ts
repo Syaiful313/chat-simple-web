@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+"use server";
+
 import { auth } from "@/lib/auth";
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 
@@ -9,37 +10,30 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function POST(req: NextRequest) {
+export async function uploadImage(formData: FormData) {
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      throw new Error("Unauthorized");
     }
 
-    const formData = await req.formData();
     const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      throw new Error("No file provided");
     }
 
     // Validate file type
     const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Invalid file type. Only images are allowed." },
-        { status: 400 },
-      );
+      throw new Error("Invalid file type. Only images are allowed.");
     }
 
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 5MB." },
-        { status: 400 },
-      );
+      throw new Error("File too large. Maximum size is 5MB.");
     }
 
     // Convert file to buffer
@@ -70,17 +64,16 @@ export async function POST(req: NextRequest) {
       },
     );
 
-    return NextResponse.json({
+    return {
       url: uploadResponse.secure_url,
       publicId: uploadResponse.public_id,
       width: uploadResponse.width,
       height: uploadResponse.height,
-    });
+    };
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Failed to upload image" },
-      { status: 500 },
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to upload image",
     );
   }
 }

@@ -27,6 +27,8 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createRoomSchema, type CreateRoomInput } from "@/lib/validations";
+import { getRooms } from "@/hooks/api/rooms/GetRooms";
+import { createRoom } from "@/hooks/api/rooms/CreateRoom";
 import { NotificationBadge } from "@/components/NotificationBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProfileDialog } from "@/components/ProfileDialog";
@@ -35,7 +37,7 @@ interface Room {
   id: string;
   name: string;
   description: string | null;
-  type: "PUBLIC" | "PRIVATE";
+  type: "PUBLIC" | "PRIVATE" | "DIRECT";
   creator: {
     username: string;
   };
@@ -45,7 +47,7 @@ interface Room {
   };
   messages: Array<{
     content: string;
-    createdAt: string;
+    createdAt: string | Date;
   }>;
   members: Array<{
     unreadCount: number;
@@ -84,8 +86,7 @@ export default function HomePage() {
 
   const fetchRooms = async () => {
     try {
-      const res = await fetch("/api/rooms");
-      const data = await res.json();
+      const data = await getRooms();
       setRooms(data.rooms || []);
     } catch (error) {
       console.error("Failed to fetch rooms:", error);
@@ -97,13 +98,7 @@ export default function HomePage() {
   const onCreateRoom = async (data: CreateRoomInput) => {
     setIsCreating(true);
     try {
-      const res = await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) throw new Error("Failed to create room");
+      await createRoom(data);
 
       // Refetch all rooms to ensure we have all the required fields
       await fetchRooms();

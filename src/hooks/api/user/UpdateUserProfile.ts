@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+"use server";
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -17,51 +18,15 @@ const updateProfileSchema = z.object({
   avatar: z.string().optional(),
 });
 
-export async function GET() {
+export async function updateUserProfile(data: unknown) {
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      throw new Error("Unauthorized");
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        bio: true,
-        avatar: true,
-        status: true,
-        createdAt: true,
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ user });
-  } catch (error) {
-    console.error("Error fetching profile:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch profile" },
-      { status: 500 },
-    );
-  }
-}
-
-export async function PATCH(req: NextRequest) {
-  try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const validatedData = updateProfileSchema.parse(body);
+    const validatedData = updateProfileSchema.parse(data);
 
     // Check if username is being updated and if it's already taken
     if (validatedData.username) {
@@ -73,10 +38,7 @@ export async function PATCH(req: NextRequest) {
       });
 
       if (existingUser) {
-        return NextResponse.json(
-          { error: "Username sudah digunakan" },
-          { status: 400 },
-        );
+        throw new Error("Username sudah digunakan");
       }
     }
 
@@ -100,22 +62,18 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    return {
       message: "Profile updated successfully",
       user: updatedUser,
-    });
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
+      throw new Error(error.issues[0].message);
     }
 
     console.error("Error updating profile:", error);
-    return NextResponse.json(
-      { error: "Failed to update profile" },
-      { status: 500 },
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to update profile",
     );
   }
 }

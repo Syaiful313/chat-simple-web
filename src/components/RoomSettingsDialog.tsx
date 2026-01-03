@@ -25,6 +25,9 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
+import { getRoom } from "@/hooks/api/rooms/GetRoom";
+import { updateRoom } from "@/hooks/api/rooms/UpdateRoom";
+import { deleteRoom } from "@/hooks/api/rooms/DeleteRoom";
 
 const roomSettingsSchema = z.object({
   name: z
@@ -36,7 +39,7 @@ const roomSettingsSchema = z.object({
     .max(200, "Deskripsi maksimal 200 karakter")
     .optional()
     .or(z.literal("")),
-  type: z.enum(["PUBLIC", "PRIVATE"]),
+  type: z.enum(["PUBLIC", "PRIVATE", "DIRECT"]),
   avatar: z
     .string()
     .url("Avatar harus berupa URL valid")
@@ -84,10 +87,7 @@ export function RoomSettingsDialog({
   const fetchRoomData = useCallback(async () => {
     setIsFetching(true);
     try {
-      const res = await fetch(`/api/rooms/${roomId}`);
-      if (!res.ok) throw new Error("Failed to fetch room");
-
-      const data = await res.json();
+      const data = await getRoom(roomId);
       setValue("name", data.room.name);
       setValue("description", data.room.description || "");
       setValue("type", data.room.type);
@@ -112,22 +112,12 @@ export function RoomSettingsDialog({
     setSuccess(false);
 
     try {
-      const res = await fetch(`/api/rooms/${roomId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description || null,
-          type: data.type,
-          avatar: data.avatar || null,
-        }),
+      await updateRoom(roomId, {
+        name: data.name,
+        description: data.description || null,
+        type: data.type,
+        avatar: data.avatar || null,
       });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to update room");
-      }
 
       setSuccess(true);
       setTimeout(() => {
@@ -147,15 +137,7 @@ export function RoomSettingsDialog({
     setError("");
 
     try {
-      const res = await fetch(`/api/rooms/${roomId}`, {
-        method: "DELETE",
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to delete room");
-      }
+      await deleteRoom(roomId);
 
       // Close dialog and redirect
       onOpenChange(false);

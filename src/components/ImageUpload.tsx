@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Image as ImageIcon, X, Loader2 } from "lucide-react";
+import { uploadImage } from "@/hooks/api/upload/UploadImage";
 
 interface ImageUploadProps {
   onImageSelect: (imageUrl: string) => void;
@@ -74,20 +75,11 @@ export function ImageUpload({
         });
       }, 200);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const data = await uploadImage(formData);
 
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Upload failed");
-      }
-
-      const data = await response.json();
       onImageSelect(data.url);
 
       // Reset state

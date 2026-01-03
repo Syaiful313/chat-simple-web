@@ -32,13 +32,15 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoomSettingsDialog } from "@/components/RoomSettingsDialog";
 import { ImageUpload } from "@/components/ImageUpload";
 import { ImageMessage } from "@/components/ImageMessage";
+import { getRoom } from "@/hooks/api/rooms/GetRoom";
+import { toggleReaction } from "@/hooks/api/messages/ToggleReaction";
 
 interface Message {
   id: string;
   content: string;
   type?: string;
   edited?: boolean;
-  createdAt: string;
+  createdAt: string | Date;
   user: {
     id: string;
     username: string;
@@ -56,7 +58,7 @@ interface Room {
   id: string;
   name: string;
   description: string | null;
-  type: "PUBLIC" | "PRIVATE";
+  type: "PUBLIC" | "PRIVATE" | "DIRECT";
   creatorId: string;
   members?: Array<{
     userId: string;
@@ -146,10 +148,8 @@ export default function ChatRoomPage({
 
   const fetchRoomData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/rooms/${resolvedParams.roomId}`);
-      if (!res.ok) throw new Error("Room not found");
-      const data = await res.json();
-      setRoom(data.room);
+      const data = await getRoom(resolvedParams.roomId);
+      setRoom(data.room as Room);
     } catch (error) {
       console.error("Failed to fetch room:", error);
       router.push("/");
@@ -389,32 +389,24 @@ export default function ChatRoomPage({
     if (!session?.user) return;
 
     try {
-      // Call API to toggle reaction
-      const res = await fetch(`/api/messages/${messageId}/reactions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emoji }),
-      });
+      // Call Server Action
+      const data = await toggleReaction(messageId, emoji);
 
-      if (res.ok) {
-        const data = await res.json();
-
-        // Emit socket event
-        if (data.action === "added") {
-          socket.emit("add_reaction", {
-            messageId,
-            emoji,
-            userId: session.user.id,
-            roomId: resolvedParams.roomId,
-          });
-        } else {
-          socket.emit("remove_reaction", {
-            messageId,
-            emoji,
-            userId: session.user.id,
-            roomId: resolvedParams.roomId,
-          });
-        }
+      // Emit socket event
+      if (data.action === "added") {
+        socket.emit("add_reaction", {
+          messageId,
+          emoji,
+          userId: session.user.id,
+          roomId: resolvedParams.roomId,
+        });
+      } else {
+        socket.emit("remove_reaction", {
+          messageId,
+          emoji,
+          userId: session.user.id,
+          roomId: resolvedParams.roomId,
+        });
       }
     } catch (error) {
       console.error("Failed to react:", error);

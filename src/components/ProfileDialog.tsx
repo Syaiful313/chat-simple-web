@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, User, FileText, Image as ImageIcon } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
+import { getUserProfile } from "@/hooks/api/user/GetUserProfile";
+import { updateUserProfile } from "@/hooks/api/user/UpdateUserProfile";
 
 const profileSchema = z.object({
   username: z
@@ -67,10 +69,7 @@ export function ProfileDialog({
   const fetchProfile = useCallback(async () => {
     setIsFetching(true);
     try {
-      const res = await fetch("/api/user/profile");
-      if (!res.ok) throw new Error("Failed to fetch profile");
-
-      const data = await res.json();
+      const data = await getUserProfile();
       setValue("username", data.user.username);
       setValue("bio", data.user.bio || "");
       setValue("avatar", data.user.avatar || "");
@@ -95,21 +94,11 @@ export function ProfileDialog({
     setSuccess(false);
 
     try {
-      const res = await fetch("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: data.username,
-          bio: data.bio || null,
-          avatar: data.avatar || null,
-        }),
+      const result = await updateUserProfile({
+        username: data.username,
+        bio: data.bio || null,
+        avatar: data.avatar || null,
       });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to update profile");
-      }
 
       // Update session with new data
       await updateSession({
